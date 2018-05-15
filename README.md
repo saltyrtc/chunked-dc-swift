@@ -1,6 +1,9 @@
 # Binary Chunking for Swift
 
+[![CircleCI][circle-ci-badge]][circle-ci]
+[![Swift][swift-badge]][github]
 [![License](https://img.shields.io/badge/license-MIT%20%2F%20Apache%202.0-blue.svg)](https://github.com/saltyrtc/chunked-dc-swift)
+[![Join our chat on Gitter](https://badges.gitter.im/saltyrtc/Lobby.svg)](https://gitter.im/saltyrtc/Lobby)
 
 This library allows you to split up large binary messages into multiple chunks
 of a certain size.
@@ -36,3 +39,10 @@ Licensed under either of
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall
 be dual licensed as above, without any additional terms or conditions.
+
+
+<!-- Badges -->
+[circle-ci]: https://circleci.com/gh/saltyrtc/chunked-dc-swift/tree/master
+[circle-ci-badge]: https://circleci.com/gh/saltyrtc/chunked-dc-swift/tree/master.svg?style=shield
+[github]: https://github.com/saltyrtc/chunked-dc-swift
+[swift-badge]: https://img.shields.io/badge/swift-4%2B-blue.svg?maxAge=3600
