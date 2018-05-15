@@ -15,6 +15,13 @@ The full specification for the chunking format can be found
 [here](https://github.com/saltyrtc/saltyrtc-meta/blob/master/Chunking.md).
 
 
+## Generating an Xcode Project
+
+Open the project directory on the command line, then run
+
+    $ swift package generate-xcodeproj
+
+
 ## License
 
 Licensed under either of
