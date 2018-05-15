@@ -1,6 +1,7 @@
 # Binary Chunking for Swift
 
 [![CircleCI][circle-ci-badge]][circle-ci]
+[![Maintainability][codeclimate-badge]][codeclimate]
 [![Swift][swift-badge]][github]
 [![License](https://img.shields.io/badge/license-MIT%20%2F%20Apache%202.0-blue.svg)](https://github.com/saltyrtc/chunked-dc-swift)
 [![Join our chat on Gitter](https://badges.gitter.im/saltyrtc/Lobby.svg)](https://gitter.im/saltyrtc/Lobby)
@@ -44,5 +45,7 @@ be dual licensed as above, without any additional terms or conditions.
 <!-- Badges -->
 [circle-ci]: https://circleci.com/gh/saltyrtc/chunked-dc-swift/tree/master
 [circle-ci-badge]: https://circleci.com/gh/saltyrtc/chunked-dc-swift/tree/master.svg?style=shield
+[codeclimate]: https://codeclimate.com/github/saltyrtc/chunked-dc-swift/maintainability
+[codeclimate-badge]: https://api.codeclimate.com/v1/badges/9e26eed055c83e7f3cc3/maintainability
 [github]: https://github.com/saltyrtc/chunked-dc-swift
 [swift-badge]: https://img.shields.io/badge/swift-4%2B-blue.svg?maxAge=3600
