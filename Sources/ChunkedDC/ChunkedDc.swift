@@ -41,12 +41,55 @@ struct Chunker {
         }
         self.id = id
         self.data = data
-        self.chunkDataSize = chunkSize
+        self.chunkDataSize = chunkSize - Common.headerLength
     }
 
     func hasNext() -> Bool {
         let currentIndex = chunkId * chunkDataSize
         let remaining = data.count - Int(currentIndex)
         return remaining >= 1
+    }
+
+    mutating func next() -> [UInt8]? {
+        if !self.hasNext() {
+            return nil
+        }
+
+        // Allocate chunk buffer
+        let currentIndex = Int(self.chunkId * self.chunkDataSize)
+        let remaining = self.data.count - currentIndex
+        let effectiveChunkDataSize = min(remaining, Int(self.chunkDataSize))
+        var chunk = [UInt8](repeating: 0, count: effectiveChunkDataSize + Int(Common.headerLength))
+
+        // Write options
+        let options: UInt8 = remaining > effectiveChunkDataSize ? 0 : 1
+        chunk[0] = options
+
+        // Write id
+        chunk[1] = UInt8((self.id >> 24) & 0xff)
+        chunk[2] = UInt8((self.id >> 16) & 0xff)
+        chunk[3] = UInt8((self.id >> 8) & 0xff)
+        chunk[4] = UInt8(self.id & 0xff)
+
+        // Write serial
+        let serial: UInt32 = self.nextSerial()
+        chunk[5] = UInt8((serial >> 24) & 0xff)
+        chunk[6] = UInt8((serial >> 16) & 0xff)
+        chunk[7] = UInt8((serial >> 8) & 0xff)
+        chunk[8] = UInt8(serial & 0xff)
+
+        // Write chunk data
+        for i in 0..<effectiveChunkDataSize {
+            chunk[i + 9] = self.data[currentIndex + i]
+        }
+
+        return chunk
+    }
+
+    /// Return and post-increment the id of the next block
+    private mutating func nextSerial() -> UInt32 {
+        let serial = self.chunkId
+        self.chunkId += 1
+        return serial
     }
 }
