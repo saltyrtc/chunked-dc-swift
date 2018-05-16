@@ -92,11 +92,42 @@ final class ChunkerTests: XCTestCase {
     }
 
     static var allTests = [
-        ("testInitChunkSize", testInitChunkSize),
-        ("testInitData", testInitData),
-        ("testHasNext", testHasNext),
-        ("testNext", testNext),
-        ("testIterator", testIterator),
+        ("initChunkSize", testInitChunkSize),
+        ("initData", testInitData),
+        ("hasNext", testHasNext),
+        ("next", testNext),
+        ("iterator", testIterator),
     ]
 
+}
+
+final class UnchunkerTests: XCTestCase {
+
+    func testCollectorIsComplete() {
+        let collector = ChunkCollector.init()
+        XCTAssert(!collector.isComplete())
+        collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
+        XCTAssert(!collector.isComplete())
+        collector.addChunk(chunk: Chunk(endOfMessage: true, id: 13, serial: 2, data: []))
+        XCTAssert(!collector.isComplete())
+        collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 1, data: []))
+        XCTAssert(collector.isComplete())
+    }
+
+    func testCollectorIsOlderThan() {
+        let collector = ChunkCollector.init()
+        let startDate = Date.init()
+        XCTAssert(!collector.isOlderThan(interval: 0.2), "Initially the collector should not be old")
+        while Date.init().timeIntervalSince(startDate) < 0.2 {
+            /* busy loop */
+        }
+        XCTAssert(collector.isOlderThan(interval: 0.2), "Collector should be older than 0.2s")
+        collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
+        XCTAssert(!collector.isOlderThan(interval: 0.2), "Collector lastUpdate should have been updated")
+    }
+
+    static var allTests = [
+        ("collectorIsComplete", testCollectorIsComplete),
+        ("collectorIsOlderThan", testCollectorIsOlderThan),
+    ]
 }
