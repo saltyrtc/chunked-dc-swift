@@ -1,6 +1,11 @@
 import XCTest
 @testable import ChunkedDC
 
+func busyLoop(duration: TimeInterval) {
+    let start = Date()
+    while Date().timeIntervalSince(start) < duration { /* busy loop */ }
+}
+
 final class ChunkTests: XCTestCase {
     func testEquality() {
         let c1 = Chunk(endOfMessage: true, id: 0, serial: 1, data: [])
@@ -197,11 +202,8 @@ final class ChunkCollectorTests: XCTestCase {
 
     func testIsOlderThan() {
         let collector = ChunkCollector()
-        let startDate = Date()
         XCTAssert(!collector.isOlderThan(interval: 0.2), "Initially the collector should not be old")
-        while Date().timeIntervalSince(startDate) < 0.2 {
-            /* busy loop */
-        }
+        busyLoop(duration: 0.2)
         XCTAssert(collector.isOlderThan(interval: 0.2), "Collector should be older than 0.2s")
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
         XCTAssert(!collector.isOlderThan(interval: 0.2), "Collector lastUpdate should have been updated")
@@ -323,15 +325,30 @@ final class UnchunkerTests: XCTestCase {
 
         // Message is done
         XCTAssertEqual(logger.messages.count, 1)
-        XCTAssertEqual(logger.messages[0], [1,2,3])
+        XCTAssertEqual(logger.messages[0], [1,2,3,4,5,6,7,8])
 
         // Adding another final chunk does not call delegate again
         try! unchunker.addChunk(bytes: Data([1, 0,0,0,42, 0,0,0,2, 7,8]))
         XCTAssertEqual(logger.messages.count, 1)
     }
 
+    func testGarbageCollection() {
+        let unchunker = Unchunker()
+        XCTAssertEqual(unchunker.gc(maxAge: 0.2), 0)
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,42, 0,0,0,0, 1,2,3]))
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,42, 0,0,0,0, 1,2,3])) // Duplicate
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,42, 0,0,0,1, 4,5,6]))
+        XCTAssertEqual(unchunker.gc(maxAge: 0.2), 0) // Not expired yet
+        busyLoop(duration: 0.3)
+        XCTAssertEqual(unchunker.gc(maxAge: 2), 0) // Time too large
+        XCTAssertEqual(unchunker.gc(maxAge: 0.2), 2) // 2 chunks expired
+        XCTAssertEqual(unchunker.gc(maxAge: 0.2), 0) // No more chunks left
+    }
+
     static var allTests = [
         ("addInvalid", testAddInvalid),
         ("addSingleChunkMessage", testAddSingleChunkMessage),
+        ("addMultiple", testAddMultiple),
+        ("garbageCollection", testGarbageCollection),
     ]
 }

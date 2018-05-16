@@ -83,6 +83,10 @@ class ChunkCollector {
     private var lastUpdate = Date()
     private let serialQueue = DispatchQueue(label: "chunkCollector")
 
+    var count: Int {
+        get { return self.chunks.count }
+    }
+
     /// Register a new incoming chunk for this message.
     func addChunk(chunk: Chunk) throws {
         try self.serialQueue.sync {
@@ -192,6 +196,30 @@ class Unchunker {
                 // ...the delete the chunks.
                 self.chunks.removeValue(forKey: chunk.id)
             }
+        }
+    }
+
+    /// Run garbage collection, remove incomplete messages that haven't been
+    /// updated for more than the specified number of milliseconds.
+    ///
+    /// If you want to make sure that invalid chunks don't fill up memory, call
+    /// this method regularly.
+    ///
+    /// :maxAge: Remove incomplete messages that haven't been updated for the specified interval.
+    ///
+    /// :returns: the number of removed chunks
+    func gc(maxAge: TimeInterval) -> UInt {
+        return self.serialQueue.sync {
+            var removedItems: UInt = 0
+            self.chunks = self.chunks.filter({ (_id, collector) in
+                if collector.isOlderThan(interval: maxAge) {
+                    removedItems += UInt(collector.count)
+                    return false
+                } else {
+                    return true
+                }
+            })
+            return removedItems
         }
     }
 }
