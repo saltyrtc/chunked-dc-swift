@@ -20,3 +20,20 @@ struct Chunk {
     let serial: UInt32
     let data: [UInt8]
 }
+
+extension Chunk: Comparable {
+    static func < (lhs: Chunk, rhs: Chunk) -> Bool {
+        if lhs.id == rhs.id {
+            return lhs.serial < rhs.serial
+        } else {
+            return lhs.id < rhs.id
+        }
+    }
+
+    static func == (lhs: Chunk, rhs: Chunk) -> Bool {
+        return lhs.endOfMessage == rhs.endOfMessage
+            && lhs.id == rhs.id
+            && lhs.serial == rhs.serial
+            && lhs.data == rhs.data
+    }
+}

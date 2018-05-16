@@ -1,6 +1,43 @@
 import XCTest
 @testable import ChunkedDC
 
+final class ChunkTests: XCTestCase {
+    func testEquality() {
+        let c1 = Chunk(endOfMessage: true, id: 0, serial: 1, data: [])
+        let c2 = Chunk(endOfMessage: true, id: 0, serial: 1, data: [])
+        let c3 = Chunk(endOfMessage: true, id: 0, serial: 1, data: [1])
+        let c4 = Chunk(endOfMessage: true, id: 1, serial: 1, data: [])
+
+        XCTAssertEqual(c1, c1)
+        XCTAssertEqual(c2, c2)
+        XCTAssertEqual(c3, c3)
+        XCTAssertEqual(c4, c4)
+
+        XCTAssertEqual(c1, c2)
+
+        XCTAssertNotEqual(c1, c3)
+        XCTAssertNotEqual(c1, c4)
+        XCTAssertNotEqual(c2, c3)
+        XCTAssertNotEqual(c2, c4)
+        XCTAssertNotEqual(c3, c4)
+        XCTAssertNotEqual(c4, c3)
+    }
+
+    func testComparison() {
+        let c1 = Chunk(endOfMessage: true, id: 1, serial: 1, data: [])
+        let c2 = Chunk(endOfMessage: true, id: 1, serial: 2, data: [])
+        let c3 = Chunk(endOfMessage: true, id: 0, serial: 3, data: [])
+        XCTAssertLessThan(c1, c2)
+        XCTAssertGreaterThan(c2, c3)
+        XCTAssertLessThan(c3, c1)
+    }
+
+    static var allTests = [
+        ("equality", testEquality),
+        ("comparison", testComparison),
+    ]
+}
+
 final class ChunkerTests: XCTestCase {
 
     func testInitChunkSize() {
