@@ -45,7 +45,7 @@ final class ChunkerTests: XCTestCase {
     }
 
     func testHasNext() {
-        var chunker = try! Chunker(
+        let chunker = try! Chunker(
             id: 0, data: Data.init(bytes: [1, 2, 3]), chunkSize: Common.headerLength + 1
         )
         XCTAssert(chunker.hasNext())
@@ -58,7 +58,7 @@ final class ChunkerTests: XCTestCase {
     }
 
     func testNext() {
-        var chunker = try! Chunker(
+        let chunker = try! Chunker(
             id: 42, data: Data.init(bytes: [1, 2, 3, 4, 5, 6, 7, 8]), chunkSize: 12
         )
 
@@ -75,11 +75,28 @@ final class ChunkerTests: XCTestCase {
         XCTAssertNil(chunk4)
     }
 
+    func testIterator() {
+        let chunker = try! Chunker(
+            id: 42, data: Data.init(bytes: [1, 2, 3, 4, 5, 6, 7, 8]), chunkSize: 12
+        )
+        var chunks1 = [[UInt8]]();
+        var chunks2 = [[UInt8]]();
+        for chunk in chunker {
+            chunks1.append(chunk)
+        }
+        for chunk in chunker {
+            chunks2.append(chunk)
+        }
+        XCTAssertEqual(chunks1.count, 3)
+        XCTAssertEqual(chunks2.count, 0)
+    }
+
     static var allTests = [
         ("testInitChunkSize", testInitChunkSize),
         ("testInitData", testInitData),
         ("testHasNext", testHasNext),
         ("testNext", testNext),
+        ("testIterator", testIterator),
     ]
 
 }

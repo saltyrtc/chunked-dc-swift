@@ -22,11 +22,14 @@ enum ChunkerError: Error {
     case dataEmpty
 }
 
-/// Chunker instance splits up a `Data` instance into multiple chunks.
+/// A `Chunker` splits up a `Data` instance into multiple chunks.
 ///
-/// The Chunker is initialized with an ID. For each message to be chunked, a
-/// new Chunker instance is required.
-struct Chunker {
+/// The `Chunker` is initialized with an ID. For each message to be chunked, a
+/// new `Chunker` instance is required.
+///
+/// This type implements `Sequence` and `IteratorProtocol`, so it can be
+/// iterated over (but only once, after which it has been consumed).
+class Chunker: Sequence, IteratorProtocol {
     private let id: UInt32
     private let data: Data
     private let chunkDataSize: UInt32
@@ -50,7 +53,7 @@ struct Chunker {
         return remaining >= 1
     }
 
-    mutating func next() -> [UInt8]? {
+    func next() -> [UInt8]? {
         if !self.hasNext() {
             return nil
         }
@@ -58,7 +61,7 @@ struct Chunker {
         // Allocate chunk buffer
         let currentIndex = Int(self.chunkId * self.chunkDataSize)
         let remaining = self.data.count - currentIndex
-        let effectiveChunkDataSize = min(remaining, Int(self.chunkDataSize))
+        let effectiveChunkDataSize = Swift.min(remaining, Int(self.chunkDataSize))
         var chunk = [UInt8](repeating: 0, count: effectiveChunkDataSize + Int(Common.headerLength))
 
         // Write options
@@ -86,8 +89,12 @@ struct Chunker {
         return chunk
     }
 
+    func makeIterator() -> Chunker {
+        return self
+    }
+
     /// Return and post-increment the id of the next block
-    private mutating func nextSerial() -> UInt32 {
+    private func nextSerial() -> UInt32 {
         let serial = self.chunkId
         self.chunkId += 1
         return serial
