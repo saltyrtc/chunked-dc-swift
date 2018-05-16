@@ -107,6 +107,24 @@ let removedChunks = unchunker.gc(maxAge: 10.0)
 ```
 
 
+## Thread Safety
+
+All classes exposed by this library should be thread safe.
+
+
+## Format
+
+The chunking format is described
+[in the specification](https://github.com/saltyrtc/saltyrtc-meta/blob/master/Chunking.md).
+
+
+## Testing
+
+To test from the command line:
+
+    $ swift test
+
+
 ## License
 
 Licensed under either of
