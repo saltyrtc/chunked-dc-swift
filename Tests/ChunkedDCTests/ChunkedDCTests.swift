@@ -88,7 +88,7 @@ final class ChunkerTests: XCTestCase {
         let data = Data(bytes: [1, 2, 3, 4, 5, 6, 7, 8])
         XCTAssertThrowsError(try Chunker(
             id: 0, data: data, chunkSize: Common.headerLength
-        )){ error in
+        )) { error in
             guard let thrownError = error as? ChunkerError else {
                 XCTFail("Threw wrong type of error")
                 return
@@ -182,9 +182,9 @@ final class ChunkerTests: XCTestCase {
 
 }
 
-final class UnchunkerTests: XCTestCase {
+final class ChunkCollectorTests: XCTestCase {
 
-    func testCollectorIsComplete() {
+    func testIsComplete() {
         let collector = ChunkCollector()
         XCTAssert(!collector.isComplete())
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
@@ -195,7 +195,7 @@ final class UnchunkerTests: XCTestCase {
         XCTAssert(collector.isComplete())
     }
 
-    func testCollectorIsOlderThan() {
+    func testIsOlderThan() {
         let collector = ChunkCollector()
         let startDate = Date()
         XCTAssert(!collector.isOlderThan(interval: 0.2), "Initially the collector should not be old")
@@ -223,7 +223,7 @@ final class UnchunkerTests: XCTestCase {
 
         // Chunk with serial 1 is missing, therefore merging should fail
 
-        XCTAssertThrowsError(try collector.merge()){ error in
+        XCTAssertThrowsError(try collector.merge()) { error in
             guard let thrownError = error as? UnchunkerError else {
                 XCTFail("Threw wrong type of error")
                 return
@@ -242,7 +242,7 @@ final class UnchunkerTests: XCTestCase {
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 0, data: [1,2,3]))
         XCTAssertThrowsError(try
             collector.addChunk(chunk: Chunk(endOfMessage: true, id: 23, serial: 1, data: [4,5]))
-        ){ error in
+        ) { error in
             guard let thrownError = error as? UnchunkerError else {
                 XCTFail("Threw wrong type of error")
                 return
@@ -257,10 +257,81 @@ final class UnchunkerTests: XCTestCase {
     }
 
     static var allTests = [
-        ("collectorIsComplete", testCollectorIsComplete),
-        ("collectorIsOlderThan", testCollectorIsOlderThan),
+        ("isComplete", testIsComplete),
+        ("isOlderThan", testIsOlderThan),
         ("merge", testMerge),
         ("mergeFails", testMergeFails),
         ("idValidation", testIdValidation),
+    ]
+}
+
+final class UnchunkerTests: XCTestCase {
+
+    class MessageLoggingDelegate: MessageCompleteDelegate {
+        var messages = [[UInt8]]()
+        func messageComplete(message: Data) {
+            self.messages.append([UInt8](message))
+        }
+    }
+
+    func testAddInvalid() {
+        let unchunker = Unchunker()
+        XCTAssertThrowsError(try unchunker.addChunk(bytes: Data([0,0,0]))) { error in
+            guard let thrownError = error as? UnchunkerError else {
+                XCTFail("Threw wrong type of error")
+                return
+            }
+            switch thrownError {
+            case .chunkTooSmall:
+                return
+            default:
+                XCTFail("Threw wrong error")
+            }
+        }
+    }
+
+    func testAddSingleChunkMessage() {
+        let unchunker = Unchunker()
+        let logger = MessageLoggingDelegate()
+        unchunker.delegate = logger
+        XCTAssertEqual(logger.messages.count, 0)
+        try! unchunker.addChunk(bytes: Data([1, 0,0,0,42, 0,0,0,0, 1,2,3]))
+        XCTAssertEqual(logger.messages.count, 1)
+        XCTAssertEqual(logger.messages[0], [1,2,3])
+    }
+
+    func testAddMultiple() {
+        let unchunker = Unchunker()
+        let logger = MessageLoggingDelegate()
+        unchunker.delegate = logger
+
+        // Initially, no messages
+        XCTAssertEqual(logger.messages.count, 0)
+
+        // Add two chunks (out of order)
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,42, 0,0,0,1, 4,5,6]))
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,42, 0,0,0,0, 1,2,3]))
+
+        // Add final chunk for other msg id
+        try! unchunker.addChunk(bytes: Data([1, 0,0,0,23, 0,0,0,2, 7,8]))
+
+        // Still no complete msg
+        XCTAssertEqual(logger.messages.count, 0)
+
+        // Add final chunk
+        try! unchunker.addChunk(bytes: Data([1, 0,0,0,42, 0,0,0,2, 7,8]))
+
+        // Message is done
+        XCTAssertEqual(logger.messages.count, 1)
+        XCTAssertEqual(logger.messages[0], [1,2,3])
+
+        // Adding another final chunk does not call delegate again
+        try! unchunker.addChunk(bytes: Data([1, 0,0,0,42, 0,0,0,2, 7,8]))
+        XCTAssertEqual(logger.messages.count, 1)
+    }
+
+    static var allTests = [
+        ("addInvalid", testAddInvalid),
+        ("addSingleChunkMessage", testAddSingleChunkMessage),
     ]
 }

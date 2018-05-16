@@ -81,7 +81,7 @@ class ChunkCollector {
     private var messageLength: Int?
     private var chunks: [Chunk] = []
     private var lastUpdate = Date()
-    private let serialQueue = DispatchQueue(label: "merge")
+    private let serialQueue = DispatchQueue(label: "chunkCollector")
 
     /// Register a new incoming chunk for this message.
     func addChunk(chunk: Chunk) throws {
@@ -101,6 +101,11 @@ class ChunkCollector {
                 self.messageLength = Int(chunk.serial) + 1
             }
         }
+    }
+
+    /// Return whether the collector contains the chunk with the specified serial
+    func contains(serial: UInt32) -> Bool {
+        return self.chunks.contains(where: { $0.serial == serial })
     }
 
     /// Return whether the message is complete, meaning that all chunks of the message arrived.
@@ -144,9 +149,49 @@ class ChunkCollector {
 
 /// An Unchunker instance merges multiple chunks into a single `Data`.
 class Unchunker {
-    let messageComplete: MessageCompleteDelegate
+    weak var delegate: MessageCompleteDelegate?
+    private var chunks: [UInt32: ChunkCollector] = [:]
+    private let serialQueue = DispatchQueue(label: "unchunker")
 
-    init(messageCompleteDelegate: MessageCompleteDelegate) {
-        self.messageComplete = messageCompleteDelegate
+    /// Add a chunk.
+    ///
+    /// :bytes: Data containing chunk with 9 byte header
+    func addChunk(bytes: Data) throws {
+        return try self.serialQueue.sync {
+            let chunk = try Chunk(bytes: bytes)
+
+            // Ignore repeated chunks with the same serial
+            if self.chunks.contains(where: { id, collector in
+                id == chunk.id && collector.contains(serial: chunk.serial)
+            }) {
+                return
+            }
+
+            // If this is the only chunk in the message, return it immediately.
+            if chunk.endOfMessage && chunk.serial == 0 {
+                self.delegate?.messageComplete(message: Data(chunk.data))
+                self.chunks.removeValue(forKey: chunk.id)
+                return
+            }
+
+            // Otherwise, add chunk to chunks list
+            let collector: ChunkCollector;
+            switch self.chunks[chunk.id] {
+            case nil:
+                collector = ChunkCollector()
+                self.chunks[chunk.id] = collector
+            case let c?:
+                collector = c
+            }
+            try collector.addChunk(chunk: chunk)
+
+            // Check if message is complete
+            if collector.isComplete() {
+                // Merge and notify delegate...
+                self.delegate?.messageComplete(message: try collector.merge())
+                // ...the delete the chunks.
+                self.chunks.removeValue(forKey: chunk.id)
+            }
+        }
     }
 }
