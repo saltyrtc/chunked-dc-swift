@@ -80,7 +80,7 @@ class ChunkCollector {
     private var endArrived: Bool = false
     private var messageLength: Int?
     private var chunks: [Chunk] = []
-    private var lastUpdate = Date.init()
+    private var lastUpdate = Date()
     private let serialQueue = DispatchQueue(label: "merge")
 
     /// Register a new incoming chunk for this message.
@@ -95,7 +95,7 @@ class ChunkCollector {
             self.chunks.append(chunk)
 
             // Update internal state
-            self.lastUpdate = Date.init()
+            self.lastUpdate = Date()
             if chunk.endOfMessage {
                 self.endArrived = true
                 self.messageLength = Int(chunk.serial) + 1
@@ -111,7 +111,7 @@ class ChunkCollector {
 
     /// Return whether last chunk is older than the specified interval.
     func isOlderThan(interval: TimeInterval) -> Bool {
-        let age = Date.init().timeIntervalSince(self.lastUpdate)
+        let age = Date().timeIntervalSince(self.lastUpdate)
         return age > interval
     }
 
@@ -130,7 +130,7 @@ class ChunkCollector {
 
             // Allocate buffer
             let capacity = self.chunks[0].data.count * self.messageLength!
-            var data = Data.init(capacity: capacity)
+            var data = Data(capacity: capacity)
 
             // Add chunks to buffer
             for chunk in self.chunks {

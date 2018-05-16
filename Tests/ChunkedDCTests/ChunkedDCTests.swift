@@ -33,10 +33,10 @@ final class ChunkTests: XCTestCase {
     }
 
     func testParseValid() {
-        let c1 = try! Chunk(bytes: Data.init([0, 0,0,0,42, 0,0,0,0, 1,2,3]))
-        let c2 = try! Chunk(bytes: Data.init([0, 0,0,0,42, 0,0,0,1, 4,5,6]))
-        let c3 = try! Chunk(bytes: Data.init([1, 1,2,3,42, 2,3,4,5, 7,8]))
-        let c4 = try! Chunk(bytes: Data.init([0, 0,0,0,00, 0,0,0,0]))
+        let c1 = try! Chunk(bytes: Data([0, 0,0,0,42, 0,0,0,0, 1,2,3]))
+        let c2 = try! Chunk(bytes: Data([0, 0,0,0,42, 0,0,0,1, 4,5,6]))
+        let c3 = try! Chunk(bytes: Data([1, 1,2,3,42, 2,3,4,5, 7,8]))
+        let c4 = try! Chunk(bytes: Data([0, 0,0,0,00, 0,0,0,0]))
 
         XCTAssert(!c1.endOfMessage)
         XCTAssert(!c2.endOfMessage)
@@ -85,7 +85,7 @@ final class ChunkTests: XCTestCase {
 final class ChunkerTests: XCTestCase {
 
     func testInitChunkSize() {
-        let data = Data.init(bytes: [1, 2, 3, 4, 5, 6, 7, 8])
+        let data = Data(bytes: [1, 2, 3, 4, 5, 6, 7, 8])
         XCTAssertThrowsError(try Chunker(
             id: 0, data: data, chunkSize: Common.headerLength
         )){ error in
@@ -107,7 +107,7 @@ final class ChunkerTests: XCTestCase {
 
     func testInitData() {
         XCTAssertThrowsError(try Chunker(
-            id: 0, data: Data.init(bytes: []), chunkSize: 42
+            id: 0, data: Data(bytes: []), chunkSize: 42
         )) { error in
             guard let thrownError = error as? ChunkerError else {
                 XCTFail("Threw wrong type of error")
@@ -121,13 +121,13 @@ final class ChunkerTests: XCTestCase {
             }
         }
         XCTAssertNoThrow(try Chunker(
-            id: 0, data: Data.init(bytes: [1]), chunkSize: 42
+            id: 0, data: Data(bytes: [1]), chunkSize: 42
         ))
     }
 
     func testHasNext() {
         let chunker = try! Chunker(
-            id: 0, data: Data.init(bytes: [1, 2, 3]), chunkSize: Common.headerLength + 1
+            id: 0, data: Data(bytes: [1, 2, 3]), chunkSize: Common.headerLength + 1
         )
         XCTAssert(chunker.hasNext())
         let _ = chunker.next()
@@ -140,7 +140,7 @@ final class ChunkerTests: XCTestCase {
 
     func testNext() {
         let chunker = try! Chunker(
-            id: 42, data: Data.init(bytes: [1, 2, 3, 4, 5, 6, 7, 8]), chunkSize: 12
+            id: 42, data: Data(bytes: [1, 2, 3, 4, 5, 6, 7, 8]), chunkSize: 12
         )
 
         let chunk1 = chunker.next()
@@ -158,7 +158,7 @@ final class ChunkerTests: XCTestCase {
 
     func testIterator() {
         let chunker = try! Chunker(
-            id: 42, data: Data.init(bytes: [1, 2, 3, 4, 5, 6, 7, 8]), chunkSize: 12
+            id: 42, data: Data(bytes: [1, 2, 3, 4, 5, 6, 7, 8]), chunkSize: 12
         )
         var chunks1 = [[UInt8]]();
         var chunks2 = [[UInt8]]();
@@ -185,7 +185,7 @@ final class ChunkerTests: XCTestCase {
 final class UnchunkerTests: XCTestCase {
 
     func testCollectorIsComplete() {
-        let collector = ChunkCollector.init()
+        let collector = ChunkCollector()
         XCTAssert(!collector.isComplete())
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
         XCTAssert(!collector.isComplete())
@@ -196,10 +196,10 @@ final class UnchunkerTests: XCTestCase {
     }
 
     func testCollectorIsOlderThan() {
-        let collector = ChunkCollector.init()
-        let startDate = Date.init()
+        let collector = ChunkCollector()
+        let startDate = Date()
         XCTAssert(!collector.isOlderThan(interval: 0.2), "Initially the collector should not be old")
-        while Date.init().timeIntervalSince(startDate) < 0.2 {
+        while Date().timeIntervalSince(startDate) < 0.2 {
             /* busy loop */
         }
         XCTAssert(collector.isOlderThan(interval: 0.2), "Collector should be older than 0.2s")
@@ -208,16 +208,16 @@ final class UnchunkerTests: XCTestCase {
     }
 
     func testMerge() {
-        let collector = ChunkCollector.init()
+        let collector = ChunkCollector()
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 0, data: [1,2,3]))
         try! collector.addChunk(chunk: Chunk(endOfMessage: true, id: 42, serial: 2, data: [7,8]))
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 1, data: [4,5,6]))
         let assembled: Data? = try? collector.merge()
-        XCTAssertEqual(assembled, Data.init([1,2,3,4,5,6,7,8]))
+        XCTAssertEqual(assembled, Data([1,2,3,4,5,6,7,8]))
     }
 
     func testMergeFails() {
-        let collector = ChunkCollector.init()
+        let collector = ChunkCollector()
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 0, data: [1,2,3]))
         try! collector.addChunk(chunk: Chunk(endOfMessage: true, id: 42, serial: 2, data: [7,8]))
 
@@ -238,7 +238,7 @@ final class UnchunkerTests: XCTestCase {
     }
 
     func testIdValidation() {
-        let collector = ChunkCollector.init()
+        let collector = ChunkCollector()
         try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 0, data: [1,2,3]))
         XCTAssertThrowsError(try
             collector.addChunk(chunk: Chunk(endOfMessage: true, id: 23, serial: 1, data: [4,5]))
