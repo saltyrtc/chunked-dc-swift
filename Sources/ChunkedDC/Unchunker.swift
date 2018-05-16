@@ -14,11 +14,63 @@ enum UnchunkerError: Error {
     case messageNotYetComplete
     /// A chunk collector can only collect chunks belonging to the same message
     case inconsistentMessageId
+    /// Chunk is smaller than the header length
+    case chunkTooSmall
 }
 
 /// Delegate that will be called with the assembled message once all chunks arrived.
 protocol MessageCompleteDelegate: AnyObject {
     func messageComplete(message: Data)
+}
+
+/// A chunk.
+struct Chunk {
+    let endOfMessage: Bool
+    let id: UInt32
+    let serial: UInt32
+    let data: [UInt8]
+
+    /// Create a new chunk.
+    init(endOfMessage: Bool, id: UInt32, serial: UInt32, data: [UInt8]) {
+        self.endOfMessage = endOfMessage
+        self.id = id
+        self.serial = serial
+        self.data = data
+    }
+
+    /// Parse bytes into a chunk.
+    /// Throws an `UnchunkerError` if the chunk is smaller than the header length.
+    init(bytes: Data) throws {
+        if bytes.count < Common.headerLength {
+            throw UnchunkerError.chunkTooSmall
+        }
+
+        // Read header
+        let options: UInt8 = bytes[0]
+        self.endOfMessage = (options & 0x01) == 1
+        self.id = (UInt32(bytes[1]) << 24) | (UInt32(bytes[2]) << 16) | (UInt32(bytes[3]) << 8) | UInt32(bytes[4])
+        self.serial = (UInt32(bytes[5]) << 24) | (UInt32(bytes[6]) << 16) | (UInt32(bytes[7]) << 8) | UInt32(bytes[8])
+
+        // Read data
+        self.data = [UInt8](bytes[9..<bytes.count])
+    }
+}
+
+extension Chunk: Comparable {
+    static func < (lhs: Chunk, rhs: Chunk) -> Bool {
+        if lhs.id == rhs.id {
+            return lhs.serial < rhs.serial
+        } else {
+            return lhs.id < rhs.id
+        }
+    }
+
+    static func == (lhs: Chunk, rhs: Chunk) -> Bool {
+        return lhs.endOfMessage == rhs.endOfMessage
+            && lhs.id == rhs.id
+            && lhs.serial == rhs.serial
+            && lhs.data == rhs.data
+    }
 }
 
 /// A chunk collector collects chunk belonging to the same message.
@@ -38,8 +90,10 @@ class ChunkCollector {
             if !self.chunks.isEmpty && chunk.id != self.chunks[0].id {
                 throw UnchunkerError.inconsistentMessageId
             }
+
             // Store the chunk
             self.chunks.append(chunk)
+
             // Update internal state
             self.lastUpdate = Date.init()
             if chunk.endOfMessage {

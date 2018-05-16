@@ -32,9 +32,53 @@ final class ChunkTests: XCTestCase {
         XCTAssertLessThan(c3, c1)
     }
 
+    func testParseValid() {
+        let c1 = try! Chunk(bytes: Data.init([0, 0,0,0,42, 0,0,0,0, 1,2,3]))
+        let c2 = try! Chunk(bytes: Data.init([0, 0,0,0,42, 0,0,0,1, 4,5,6]))
+        let c3 = try! Chunk(bytes: Data.init([1, 1,2,3,42, 2,3,4,5, 7,8]))
+        let c4 = try! Chunk(bytes: Data.init([0, 0,0,0,00, 0,0,0,0]))
+
+        XCTAssert(!c1.endOfMessage)
+        XCTAssert(!c2.endOfMessage)
+        XCTAssert( c3.endOfMessage)
+        XCTAssert(!c4.endOfMessage)
+
+        XCTAssertEqual(c1.id, 42)
+        XCTAssertEqual(c2.id, 42)
+        XCTAssertEqual(c3.id, 16909098)
+        XCTAssertEqual(c4.id, 0)
+
+        XCTAssertEqual(c1.serial, 0)
+        XCTAssertEqual(c2.serial, 1)
+        XCTAssertEqual(c3.serial, 33752069)
+        XCTAssertEqual(c4.serial, 0)
+
+        XCTAssertEqual(c1.data, [1,2,3])
+        XCTAssertEqual(c2.data, [4,5,6])
+        XCTAssertEqual(c3.data, [7,8])
+        XCTAssertEqual(c4.data, [])
+    }
+
+    func testParseTooShort() {
+        XCTAssertThrowsError(try Chunk(bytes: Data([0,0,0,0,0,0,0,0]))) { error in
+            guard let thrownError = error as? UnchunkerError else {
+                XCTFail("Threw wrong type of error")
+                return
+            }
+            switch thrownError {
+            case .chunkTooSmall:
+                return
+            default:
+                XCTFail("Threw wrong error")
+            }
+        }
+    }
+
     static var allTests = [
         ("equality", testEquality),
         ("comparison", testComparison),
+        ("parseValid", testParseValid),
+        ("parseTooShort", testParseTooShort),
     ]
 }
 
