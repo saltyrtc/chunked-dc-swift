@@ -143,11 +143,11 @@ final class UnchunkerTests: XCTestCase {
     func testCollectorIsComplete() {
         let collector = ChunkCollector.init()
         XCTAssert(!collector.isComplete())
-        collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
+        try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
         XCTAssert(!collector.isComplete())
-        collector.addChunk(chunk: Chunk(endOfMessage: true, id: 13, serial: 2, data: []))
+        try! collector.addChunk(chunk: Chunk(endOfMessage: true, id: 13, serial: 2, data: []))
         XCTAssert(!collector.isComplete())
-        collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 1, data: []))
+        try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 1, data: []))
         XCTAssert(collector.isComplete())
     }
 
@@ -159,12 +159,64 @@ final class UnchunkerTests: XCTestCase {
             /* busy loop */
         }
         XCTAssert(collector.isOlderThan(interval: 0.2), "Collector should be older than 0.2s")
-        collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
+        try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 13, serial: 0, data: []))
         XCTAssert(!collector.isOlderThan(interval: 0.2), "Collector lastUpdate should have been updated")
+    }
+
+    func testMerge() {
+        let collector = ChunkCollector.init()
+        try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 0, data: [1,2,3]))
+        try! collector.addChunk(chunk: Chunk(endOfMessage: true, id: 42, serial: 2, data: [7,8]))
+        try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 1, data: [4,5,6]))
+        let assembled: Data? = try? collector.merge()
+        XCTAssertEqual(assembled, Data.init([1,2,3,4,5,6,7,8]))
+    }
+
+    func testMergeFails() {
+        let collector = ChunkCollector.init()
+        try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 0, data: [1,2,3]))
+        try! collector.addChunk(chunk: Chunk(endOfMessage: true, id: 42, serial: 2, data: [7,8]))
+
+        // Chunk with serial 1 is missing, therefore merging should fail
+
+        XCTAssertThrowsError(try collector.merge()){ error in
+            guard let thrownError = error as? UnchunkerError else {
+                XCTFail("Threw wrong type of error")
+                return
+            }
+            switch thrownError {
+            case .messageNotYetComplete:
+                return
+            default:
+                XCTFail("Threw wrong error")
+            }
+        }
+    }
+
+    func testIdValidation() {
+        let collector = ChunkCollector.init()
+        try! collector.addChunk(chunk: Chunk(endOfMessage: false, id: 42, serial: 0, data: [1,2,3]))
+        XCTAssertThrowsError(try
+            collector.addChunk(chunk: Chunk(endOfMessage: true, id: 23, serial: 1, data: [4,5]))
+        ){ error in
+            guard let thrownError = error as? UnchunkerError else {
+                XCTFail("Threw wrong type of error")
+                return
+            }
+            switch thrownError {
+            case .inconsistentMessageId:
+                return
+            default:
+                XCTFail("Threw wrong error")
+            }
+        }
     }
 
     static var allTests = [
         ("collectorIsComplete", testCollectorIsComplete),
         ("collectorIsOlderThan", testCollectorIsOlderThan),
+        ("merge", testMerge),
+        ("mergeFails", testMergeFails),
+        ("idValidation", testIdValidation),
     ]
 }
