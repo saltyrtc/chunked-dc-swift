@@ -17,6 +17,32 @@ enum ChunkerError: Error {
     case dataEmpty
 }
 
+/// Create a new chunk.
+func makeChunk(id: UInt32, serial: UInt32, endOfMessage: Bool, data: ArraySlice<UInt8>) -> [UInt8] {
+    var chunk = [UInt8](repeating: 0, count: data.count + Int(Common.headerLength))
+
+    // Write options
+    let options: UInt8 = endOfMessage ? 1 : 0
+    chunk[0] = options
+
+    // Write id
+    chunk[1] = UInt8((id >> 24) & 0xff)
+    chunk[2] = UInt8((id >> 16) & 0xff)
+    chunk[3] = UInt8((id >> 8) & 0xff)
+    chunk[4] = UInt8(id & 0xff)
+
+    // Write serial
+    chunk[5] = UInt8((serial >> 24) & 0xff)
+    chunk[6] = UInt8((serial >> 16) & 0xff)
+    chunk[7] = UInt8((serial >> 8) & 0xff)
+    chunk[8] = UInt8(serial & 0xff)
+
+    // Write chunk data
+    chunk[9..<9+data.count] = ArraySlice(data)
+
+    return chunk
+}
+
 /// A `Chunker` splits up a `Data` instance into multiple chunks.
 ///
 /// The `Chunker` is initialized with an ID. For each message to be chunked, a
@@ -53,33 +79,17 @@ class Chunker: Sequence, IteratorProtocol {
             return nil
         }
 
-        // Allocate chunk buffer
+        // Create next chunk
         let currentIndex = Int(self.chunkId * self.chunkDataSize)
         let remaining = self.data.count - currentIndex
         let effectiveChunkDataSize = Swift.min(remaining, Int(self.chunkDataSize))
-        var chunk = [UInt8](repeating: 0, count: effectiveChunkDataSize + Int(Common.headerLength))
-
-        // Write options
-        let options: UInt8 = remaining > effectiveChunkDataSize ? 0 : 1
-        chunk[0] = options
-
-        // Write id
-        chunk[1] = UInt8((self.id >> 24) & 0xff)
-        chunk[2] = UInt8((self.id >> 16) & 0xff)
-        chunk[3] = UInt8((self.id >> 8) & 0xff)
-        chunk[4] = UInt8(self.id & 0xff)
-
-        // Write serial
-        let serial: UInt32 = self.nextSerial()
-        chunk[5] = UInt8((serial >> 24) & 0xff)
-        chunk[6] = UInt8((serial >> 16) & 0xff)
-        chunk[7] = UInt8((serial >> 8) & 0xff)
-        chunk[8] = UInt8(serial & 0xff)
-
-        // Write chunk data
-        for i in 0..<effectiveChunkDataSize {
-            chunk[i + 9] = self.data[currentIndex + i]
-        }
+        let endOfMessage = remaining <= effectiveChunkDataSize
+        let chunk = makeChunk(
+            id: self.id,
+            serial: self.nextSerial(),
+            endOfMessage: endOfMessage,
+            data: ArraySlice(self.data[currentIndex ..< currentIndex+effectiveChunkDataSize])
+        )
 
         return chunk
     }
