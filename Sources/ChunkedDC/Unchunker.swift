@@ -54,6 +54,10 @@ struct Chunk {
         // Read data
         self.data = [UInt8](bytes[9..<bytes.count])
     }
+
+    func serialize() -> [UInt8] {
+        return makeChunk(id: self.id, serial: self.serial, endOfMessage: self.endOfMessage, data: ArraySlice(self.data))
+    }
 }
 
 extension Chunk: Comparable {

@@ -79,11 +79,29 @@ final class ChunkTests: XCTestCase {
         }
     }
 
+    func testSerialize() {
+        let data1: [UInt8] = [0, 0,0,0,42, 0,0,0,0, 1,2,3]
+        let c1 = try! Chunk(bytes: Data(data1))
+        XCTAssertEqual(c1.id, 42)
+        XCTAssertEqual(c1.serial, 0)
+        XCTAssertEqual(c1.data, [1,2,3])
+
+        let data2: [UInt8] = [1, 0,0,1,1, 0,0,2,3, 3,4,5]
+        let c2 = try! Chunk(bytes: Data(data2))
+        XCTAssertEqual(c2.id, 257)
+        XCTAssertEqual(c2.serial, 515)
+        XCTAssertEqual(c2.data, [3,4,5])
+
+        XCTAssertEqual(c1.serialize(), data1)
+        XCTAssertEqual(c2.serialize(), data2)
+    }
+
     static var allTests = [
         ("equality", testEquality),
         ("comparison", testComparison),
         ("parseValid", testParseValid),
         ("parseTooShort", testParseTooShort),
+        ("serialize", testSerialize),
     ]
 }
 
