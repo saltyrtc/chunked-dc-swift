@@ -18,7 +18,7 @@ enum ChunkerError: Error {
 }
 
 /// Create a new chunk.
-func makeChunk(id: UInt32, serial: UInt32, endOfMessage: Bool, data: ArraySlice<UInt8>) -> [UInt8] {
+func makeChunkBytes(id: UInt32, serial: UInt32, endOfMessage: Bool, data: ArraySlice<UInt8>) -> [UInt8] {
     var chunk = [UInt8](repeating: 0, count: data.count + Int(Common.headerLength))
 
     // Write options
@@ -84,7 +84,7 @@ class Chunker: Sequence, IteratorProtocol {
         let remaining = self.data.count - currentIndex
         let effectiveChunkDataSize = Swift.min(remaining, Int(self.chunkDataSize))
         let endOfMessage = remaining <= effectiveChunkDataSize
-        let chunk = makeChunk(
+        let chunk = makeChunkBytes(
             id: self.id,
             serial: self.nextSerial(),
             endOfMessage: endOfMessage,

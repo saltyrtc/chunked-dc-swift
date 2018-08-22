@@ -56,7 +56,12 @@ struct Chunk {
     }
 
     func serialize() -> [UInt8] {
-        return makeChunk(id: self.id, serial: self.serial, endOfMessage: self.endOfMessage, data: ArraySlice(self.data))
+        return makeChunkBytes(
+            id: self.id,
+            serial: self.serial,
+            endOfMessage: self.endOfMessage,
+            data: ArraySlice(self.data)
+        )
     }
 }
 
@@ -151,6 +156,15 @@ class ChunkCollector {
             }
 
             return data
+        }
+    }
+
+    /// Return list of serialized chunks.
+    ///
+    /// Note that the "last update" timestamps will not be serialized, only the raw chunks!
+    func serialize() -> [[UInt8]] {
+        return self.serialQueue.sync {
+            self.chunks.map({ $0.serialize() })
         }
     }
 }

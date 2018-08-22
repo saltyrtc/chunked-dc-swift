@@ -276,12 +276,23 @@ final class ChunkCollectorTests: XCTestCase {
         }
     }
 
+    func testSerialize() {
+        let collector = ChunkCollector()
+        try! collector.addChunk(chunk: Chunk(bytes: Data([0, 0,0,0,23, 0,0,0,0, 1,2,3])))
+        try! collector.addChunk(chunk: Chunk(bytes: Data([0, 0,0,0,23, 0,0,0,1, 4,5,6])))
+        XCTAssertEqual(collector.serialize(), [
+            [0, 0,0,0,23, 0,0,0,0, 1,2,3],
+            [0, 0,0,0,23, 0,0,0,1, 4,5,6],
+        ])
+    }
+
     static var allTests = [
         ("isComplete", testIsComplete),
         ("isOlderThan", testIsOlderThan),
         ("merge", testMerge),
         ("mergeFails", testMergeFails),
         ("idValidation", testIdValidation),
+        ("serialize", testSerialize),
     ]
 }
 
