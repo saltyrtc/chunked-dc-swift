@@ -374,10 +374,24 @@ final class UnchunkerTests: XCTestCase {
         XCTAssertEqual(unchunker.gc(maxAge: 0.2), 0) // No more chunks left
     }
 
+    func testSerialize() {
+        let unchunker = Unchunker()
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,23, 0,0,0,0, 1,2,3]))
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,42, 0,0,0,1, 7,8,9]))
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,23, 0,0,0,1, 4,5,6]))
+        // Chunks are reordered because they were grouped in chunk collectors
+        XCTAssertEqual(unchunker.serialize(), [
+            [0, 0,0,0,23, 0,0,0,0, 1,2,3],
+            [0, 0,0,0,23, 0,0,0,1, 4,5,6],
+            [0, 0,0,0,42, 0,0,0,1, 7,8,9],
+        ])
+    }
+
     static var allTests = [
         ("addInvalid", testAddInvalid),
         ("addSingleChunkMessage", testAddSingleChunkMessage),
         ("addMultiple", testAddMultiple),
         ("garbageCollection", testGarbageCollection),
+        ("serialize", testSerialize),
     ]
 }

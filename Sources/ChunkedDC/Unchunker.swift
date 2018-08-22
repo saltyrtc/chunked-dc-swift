@@ -240,4 +240,13 @@ class Unchunker {
             return removedItems
         }
     }
+
+    /// Return list of serialized chunks.
+    ///
+    /// Note that the "last update" timestamps will not be serialized, only the raw chunks!
+    func serialize() -> [[UInt8]] {
+        return self.serialQueue.sync {
+            return self.chunks.values.flatMap({ $0.serialize() })
+        }
+    }
 }
