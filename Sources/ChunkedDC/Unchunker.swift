@@ -54,6 +54,15 @@ struct Chunk {
         // Read data
         self.data = [UInt8](bytes[9..<bytes.count])
     }
+
+    func serialize() -> [UInt8] {
+        return makeChunkBytes(
+            id: self.id,
+            serial: self.serial,
+            endOfMessage: self.endOfMessage,
+            data: ArraySlice(self.data)
+        )
+    }
 }
 
 extension Chunk: Comparable {
@@ -149,6 +158,15 @@ class ChunkCollector {
             return data
         }
     }
+
+    /// Return list of serialized chunks.
+    ///
+    /// Note that the "last update" timestamps will not be serialized, only the raw chunks!
+    func serialize() -> [[UInt8]] {
+        return self.serialQueue.sync {
+            self.chunks.map({ $0.serialize() })
+        }
+    }
 }
 
 /// An Unchunker instance merges multiple chunks into a single `Data`.
@@ -220,6 +238,15 @@ class Unchunker {
                 }
             })
             return removedItems
+        }
+    }
+
+    /// Return list of serialized chunks.
+    ///
+    /// Note that the "last update" timestamps will not be serialized, only the raw chunks!
+    func serialize() -> [[UInt8]] {
+        return self.serialQueue.sync {
+            return self.chunks.values.flatMap({ $0.serialize() })
         }
     }
 }

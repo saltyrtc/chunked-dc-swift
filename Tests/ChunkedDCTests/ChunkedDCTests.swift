@@ -79,11 +79,29 @@ final class ChunkTests: XCTestCase {
         }
     }
 
+    func testSerialize() {
+        let data1: [UInt8] = [0, 0,0,0,42, 0,0,0,0, 1,2,3]
+        let c1 = try! Chunk(bytes: Data(data1))
+        XCTAssertEqual(c1.id, 42)
+        XCTAssertEqual(c1.serial, 0)
+        XCTAssertEqual(c1.data, [1,2,3])
+
+        let data2: [UInt8] = [1, 0,0,1,1, 0,0,2,3, 3,4,5]
+        let c2 = try! Chunk(bytes: Data(data2))
+        XCTAssertEqual(c2.id, 257)
+        XCTAssertEqual(c2.serial, 515)
+        XCTAssertEqual(c2.data, [3,4,5])
+
+        XCTAssertEqual(c1.serialize(), data1)
+        XCTAssertEqual(c2.serialize(), data2)
+    }
+
     static var allTests = [
         ("equality", testEquality),
         ("comparison", testComparison),
         ("parseValid", testParseValid),
         ("parseTooShort", testParseTooShort),
+        ("serialize", testSerialize),
     ]
 }
 
@@ -258,12 +276,23 @@ final class ChunkCollectorTests: XCTestCase {
         }
     }
 
+    func testSerialize() {
+        let collector = ChunkCollector()
+        try! collector.addChunk(chunk: Chunk(bytes: Data([0, 0,0,0,23, 0,0,0,0, 1,2,3])))
+        try! collector.addChunk(chunk: Chunk(bytes: Data([0, 0,0,0,23, 0,0,0,1, 4,5,6])))
+        XCTAssertEqual(collector.serialize(), [
+            [0, 0,0,0,23, 0,0,0,0, 1,2,3],
+            [0, 0,0,0,23, 0,0,0,1, 4,5,6],
+        ])
+    }
+
     static var allTests = [
         ("isComplete", testIsComplete),
         ("isOlderThan", testIsOlderThan),
         ("merge", testMerge),
         ("mergeFails", testMergeFails),
         ("idValidation", testIdValidation),
+        ("serialize", testSerialize),
     ]
 }
 
@@ -345,10 +374,24 @@ final class UnchunkerTests: XCTestCase {
         XCTAssertEqual(unchunker.gc(maxAge: 0.2), 0) // No more chunks left
     }
 
+    func testSerialize() {
+        let unchunker = Unchunker()
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,23, 0,0,0,0, 1,2,3]))
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,42, 0,0,0,1, 7,8,9]))
+        try! unchunker.addChunk(bytes: Data([0, 0,0,0,23, 0,0,0,1, 4,5,6]))
+        // Chunks are reordered because they were grouped in chunk collectors
+        XCTAssertEqual(unchunker.serialize(), [
+            [0, 0,0,0,23, 0,0,0,0, 1,2,3],
+            [0, 0,0,0,23, 0,0,0,1, 4,5,6],
+            [0, 0,0,0,42, 0,0,0,1, 7,8,9],
+        ])
+    }
+
     static var allTests = [
         ("addInvalid", testAddInvalid),
         ("addSingleChunkMessage", testAddSingleChunkMessage),
         ("addMultiple", testAddMultiple),
         ("garbageCollection", testGarbageCollection),
+        ("serialize", testSerialize),
     ]
 }
