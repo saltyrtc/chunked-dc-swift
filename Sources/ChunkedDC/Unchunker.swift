@@ -9,7 +9,7 @@
 import Foundation
 
 /// All errors that can occur inside the `Unchunker`.
-enum UnchunkerError: Error {
+public enum UnchunkerError: Error {
     /// Not all chunks for a message have arrived yet
     case messageNotYetComplete
     /// A chunk collector can only collect chunks belonging to the same message
@@ -19,7 +19,7 @@ enum UnchunkerError: Error {
 }
 
 /// Delegate that will be called with the assembled message once all chunks arrived.
-protocol MessageCompleteDelegate: AnyObject {
+public protocol MessageCompleteDelegate: AnyObject {
     func messageComplete(message: Data)
 }
 
@@ -170,15 +170,18 @@ class ChunkCollector {
 }
 
 /// An Unchunker instance merges multiple chunks into a single `Data`.
-class Unchunker {
-    weak var delegate: MessageCompleteDelegate?
+public final class Unchunker {
+    public weak var delegate: MessageCompleteDelegate?
     private var chunks: [UInt32: ChunkCollector] = [:]
     private let serialQueue = DispatchQueue(label: "unchunker")
+    
+    public init() {
+    }
 
     /// Add a chunk.
     ///
     /// :bytes: Data containing chunk with 9 byte header
-    func addChunk(bytes: Data) throws {
+    public func addChunk(bytes: Data) throws {
         return try self.serialQueue.sync {
             let chunk = try Chunk(bytes: bytes)
 
@@ -226,7 +229,7 @@ class Unchunker {
     /// :maxAge: Remove incomplete messages that haven't been updated for the specified interval.
     ///
     /// :returns: the number of removed chunks
-    func gc(maxAge: TimeInterval) -> UInt {
+    public func gc(maxAge: TimeInterval) -> UInt {
         return self.serialQueue.sync {
             var removedItems: UInt = 0
             self.chunks = self.chunks.filter({ (_id, collector) in
@@ -244,7 +247,7 @@ class Unchunker {
     /// Return list of serialized chunks.
     ///
     /// Note that the "last update" timestamps will not be serialized, only the raw chunks!
-    func serialize() -> [[UInt8]] {
+    public func serialize() -> [[UInt8]] {
         return self.serialQueue.sync {
             return self.chunks.values.flatMap({ $0.serialize() })
         }

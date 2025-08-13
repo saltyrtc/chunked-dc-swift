@@ -9,7 +9,7 @@
 import Foundation
 
 /// All errors that can occur inside the `Chunker`.
-enum ChunkerError: Error {
+public enum ChunkerError: Error {
     /// The chunk size must be at least 10 bytes.
     case chunkSizeTooSmall
 
@@ -50,13 +50,13 @@ func makeChunkBytes(id: UInt32, serial: UInt32, endOfMessage: Bool, data: ArrayS
 ///
 /// This type implements `Sequence` and `IteratorProtocol`, so it can be
 /// iterated over (but only once, after which it has been consumed).
-class Chunker: Sequence, IteratorProtocol {
+public final class Chunker: Sequence, IteratorProtocol {
     private let id: UInt32
     private let data: Data
     private let chunkDataSize: UInt32
     private var chunkId: UInt32 = 0
 
-    init(id: UInt32, data: Data, chunkSize: UInt32) throws {
+    public init(id: UInt32, data: Data, chunkSize: UInt32) throws {
         if chunkSize < Common.headerLength + 1 {
             throw ChunkerError.chunkSizeTooSmall
         }
@@ -68,13 +68,13 @@ class Chunker: Sequence, IteratorProtocol {
         self.chunkDataSize = chunkSize - Common.headerLength
     }
 
-    func hasNext() -> Bool {
+    public func hasNext() -> Bool {
         let currentIndex = chunkId * chunkDataSize
         let remaining = data.count - Int(currentIndex)
         return remaining >= 1
     }
 
-    func next() -> [UInt8]? {
+    public func next() -> [UInt8]? {
         if !self.hasNext() {
             return nil
         }
@@ -94,7 +94,7 @@ class Chunker: Sequence, IteratorProtocol {
         return chunk
     }
 
-    func makeIterator() -> Chunker {
+    public func makeIterator() -> Chunker {
         return self
     }
 
